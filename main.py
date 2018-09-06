@@ -18,7 +18,7 @@ parser.add_argument('-i', '--ignore', nargs='+', type=str, help="ignore a list o
 parser.add_argument('--set-class-iou', nargs='+', type=str, help="set IoU for a specific class.")
 parser.add_argument('--preddir', required=True, help="Predictions dir")
 parser.add_argument('--gnddir', required=True, help="Ground-truth dir")
-parser.add_argument('--outdir', default='/tmp', help="outputdir")
+parser.add_argument('--outfile', default='/tmp/results.txt', help="Output results file")
 args = parser.parse_args()
 
 # if there are no classes to ignore then replace None by empty list
@@ -267,13 +267,15 @@ def draw_plot_func(dictionary, n_classes, window_title, plot_title, x_label, out
   # close the plot
   plt.close()
 
+if os.path.exists(args.outfile): error("Default {} exists! Delete it or use a different file.".format(args.outfile))
+
 """
  Create a "tmp_files/" and "results/" directory
 """
 tmp_files_path = "tmp_files"
 if not os.path.exists(tmp_files_path): # if it doesn't exist already
   os.makedirs(tmp_files_path)
-results_files_path = args.outdir
+results_files_path = '/tmp'
 #if os.path.exists(results_files_path): # if it exist already
   # reset the results directory
   #shutil.rmtree(results_files_path)
@@ -410,7 +412,7 @@ for class_index, class_name in enumerate(gt_classes):
 sum_AP = 0.0
 ap_dictionary = {}
 # open file to store the results
-with open(results_files_path + "/results.txt", 'w') as results_file:
+with open(args.outfile, 'w') as results_file:
   results_file.write("# AP and precision/recall per class\n")
   count_true_positives = {}
   for class_index, class_name in enumerate(gt_classes):
