@@ -16,6 +16,8 @@ parser.add_argument('-q', '--quiet', help="minimalistic console output.", action
 parser.add_argument('-i', '--ignore', nargs='+', type=str, help="ignore a list of classes.")
 # argparse receiving list of classes with specific IoU
 parser.add_argument('--set-class-iou', nargs='+', type=str, help="set IoU for a specific class.")
+parser.add_argument('--preddir', required=True, help="Predictions dir")
+parser.add_argument('--gnddir', required=True, help="Ground-truth dir")
 args = parser.parse_args()
 
 # if there are no classes to ignore then replace None by empty list
@@ -27,14 +29,16 @@ if args.set_class_iou is not None:
   specific_iou_flagged = True
 
 # if there are no images then no animation can be shown
-img_path = 'images'
-if os.path.exists(img_path): 
-  for dirpath, dirnames, files in os.walk(img_path):
-    if not files:
-      # no image files found
-      args.no_animation = True
-else:
-  args.no_animation = True
+#img_path = 'images'
+#if os.path.exists(img_path): 
+  #for dirpath, dirnames, files in os.walk(img_path):
+    #if not files:
+      ## no image files found
+      #args.no_animation = True
+#else:
+  #args.no_animation = True
+args.no_animation = True
+args.no_plot = True
 
 # try to import OpenCV if the user didn't choose the option --no-animation
 show_animation = False
@@ -102,8 +106,6 @@ def voc_ap(rec, prec):
   """
    This part makes the precision monotonically decreasing
     (goes from the end to the beginning)
-    matlab:  for i=numel(mpre)-1:-1:1
-                mpre(i)=max(mpre(i),mpre(i+1));
   """
   # matlab indexes start in 1 but python in 0, so I have to do:
   #   range(start=(len(mpre) - 2), end=0, step=-1)
@@ -113,8 +115,8 @@ def voc_ap(rec, prec):
     mpre[i] = max(mpre[i], mpre[i+1])
   """
    This part creates a list of indexes where the recall changes
-    matlab:  i=find(mrec(2:end)~=mrec(1:end-1))+1;
   """
+  # matlab: i=find(mrec(2:end)~=mrec(1:end-1))+1;
   i_list = []
   for i in range(1, len(mrec)):
     if mrec[i] != mrec[i-1]:
@@ -122,8 +124,8 @@ def voc_ap(rec, prec):
   """
    The Average Precision (AP) is the area under the curve
     (numerical integration)
-    matlab: ap=sum((mrec(i)-mrec(i-1)).*mpre(i));
   """
+  # matlab: ap=sum((mrec(i)-mrec(i-1)).*mpre(i));
   ap = 0.0
   for i in i_list:
     ap += ((mrec[i]-mrec[i-1])*mpre[i])
@@ -287,7 +289,7 @@ if show_animation:
    Create a list of all the class names present in the ground-truth (gt_classes).
 """
 # get a list with the ground-truth files
-ground_truth_files_list = glob.glob('ground-truth/*.txt')
+ground_truth_files_list = glob.glob(args.gnddir + '/*.txt')
 if len(ground_truth_files_list) == 0:
   error("Error: No ground-truth files found!")
 ground_truth_files_list.sort()
@@ -299,43 +301,34 @@ for txt_file in ground_truth_files_list:
   file_id = txt_file.split(".txt",1)[0]
   file_id = os.path.basename(os.path.normpath(file_id))
   # check if there is a correspondent predicted objects file
-  if not os.path.exists('predicted/' + file_id + ".txt"):
-    error_msg = "Error. File not found: predicted/" +  file_id + ".txt\n"
+  if not os.path.exists(args.preddir + '/' + file_id + ".txt"):
+    error_msg = "Error. File not found: " + args.preddir + '/' + file_id + ".txt\n"
     error_msg += "(You can avoid this error message by running extra/intersect-gt-and-pred.py)"
     error(error_msg)
   lines_list = file_lines_to_list(txt_file)
   # create ground-truth dictionary
   bounding_boxes = []
-  is_difficult = False
   for line in lines_list:
     try:
-      if "difficult" in line:
-          class_name, left, top, right, bottom, _difficult = line.split()
-          is_difficult = True
-      else:
-          class_name, left, top, right, bottom = line.split()
+      class_name, left, top, right, bottom = line.split()
     except ValueError:
       error_msg = "Error: File " + txt_file + " in the wrong format.\n"
-      error_msg += " Expected: <class_name> <left> <top> <right> <bottom> ['difficult']\n"
+      error_msg += " Expected: <class_name> <left> <top> <right> <bottom>\n"
       error_msg += " Received: " + line
       error_msg += "\n\nIf you have a <class_name> with spaces between words you should remove them\n"
-      error_msg += "by running the script \"remove_space.py\" or \"rename_class.py\" in the \"extra/\" folder."
+      error_msg += "by running the script \"rename_class.py\" in the \"extra/\" folder."
       error(error_msg)
     # check if class is in the ignore list, if yes skip
     if class_name in args.ignore:
       continue
     bbox = left + " " + top + " " + right + " " +bottom
-    if is_difficult:
-        bounding_boxes.append({"class_name":class_name, "bbox":bbox, "used":False, "difficult":True})
-        is_difficult = False
+    bounding_boxes.append({"class_name":class_name, "bbox":bbox, "used":False})
+    # count that object
+    if class_name in gt_counter_per_class:
+      gt_counter_per_class[class_name] += 1
     else:
-        bounding_boxes.append({"class_name":class_name, "bbox":bbox, "used":False})
-        # count that object
-        if class_name in gt_counter_per_class:
-          gt_counter_per_class[class_name] += 1
-        else:
-          # if class didn't exist yet
-          gt_counter_per_class[class_name] = 1
+      # if class didn't exist yet
+      gt_counter_per_class[class_name] = 1
   # dump bounding_boxes into a ".json" file
   with open(tmp_files_path + "/" + file_id + "_ground_truth.json", 'w') as outfile:
     json.dump(bounding_boxes, outfile)
@@ -376,7 +369,7 @@ if specific_iou_flagged:
    Load each of the predicted files into a temporary ".json" file.
 """
 # get a list with the predicted files
-predicted_files_list = glob.glob('predicted/*.txt')
+predicted_files_list = glob.glob(args.preddir + '/*.txt')
 predicted_files_list.sort()
 
 for class_index, class_name in enumerate(gt_classes):
@@ -387,8 +380,8 @@ for class_index, class_name in enumerate(gt_classes):
     file_id = txt_file.split(".txt",1)[0]
     file_id = os.path.basename(os.path.normpath(file_id))
     if class_index == 0:
-      if not os.path.exists('ground-truth/' + file_id + ".txt"):
-        error_msg = "Error. File not found: ground-truth/" +  file_id + ".txt\n"
+      if not os.path.exists(args.gnddir + '/' + file_id + ".txt"):
+        error_msg = "Error. File not found: " + args.gnddir + '/' + file_id + ".txt\n"
         error_msg += "(You can avoid this error message by running extra/intersect-gt-and-pred.py)"
         error(error_msg)
     lines = file_lines_to_list(txt_file)
@@ -475,7 +468,7 @@ with open(results_files_path + "/results.txt", 'w') as results_file:
               ovmax = ov
               gt_match = obj
 
-      # assign prediction as true positive/don't care/false positive
+      # assign prediction as true positive or false positive
       if show_animation:
         status = "NO MATCH FOUND!" # status is only used in the animation
       # set minimum overlap
@@ -485,22 +478,21 @@ with open(results_files_path + "/results.txt", 'w') as results_file:
           index = specific_iou_classes.index(class_name)
           min_overlap = float(iou_list[index])
       if ovmax >= min_overlap:
-        if "difficult" not in gt_match:
-            if not bool(gt_match["used"]):
-              # true positive
-              tp[idx] = 1
-              gt_match["used"] = True
-              count_true_positives[class_name] += 1
-              # update the ".json" file
-              with open(gt_file, 'w') as f:
-                  f.write(json.dumps(ground_truth_data))
-              if show_animation:
-                status = "MATCH!"
-            else:
-              # false positive (multiple detection)
-              fp[idx] = 1
-              if show_animation:
-                status = "REPEATED MATCH!"
+        if not bool(gt_match["used"]):
+          # true positive
+          tp[idx] = 1
+          gt_match["used"] = True
+          count_true_positives[class_name] += 1
+          # update the ".json" file
+          with open(gt_file, 'w') as f:
+              f.write(json.dumps(ground_truth_data))
+          if show_animation:
+            status = "MATCH!"
+        else:
+          # false positive (multiple detection)
+          fp[idx] = 1
+          if show_animation:
+            status = "REPEATED MATCH!"
       else:
         # false positive
         fp[idx] = 1
@@ -594,11 +586,7 @@ with open(results_files_path + "/results.txt", 'w') as results_file:
     """
     if draw_plot:
       plt.plot(rec, prec, '-o')
-      # add a new penultimate point to the list (mrec[-2], 0.0)
-      # since the last line segment (and respective area) do not affect the AP value
-      area_under_curve_x = mrec[:-1] + [mrec[-2]] + [mrec[-1]]
-      area_under_curve_y = mprec[:-1] + [0.0] + [mprec[-1]]
-      plt.fill_between(area_under_curve_x, 0, area_under_curve_y, alpha=0.2, edgecolor='r')
+      plt.fill_between(mrec, 0, mprec, alpha=0.2, edgecolor='r')
       # set window title
       fig = plt.gcf() # gcf - get current figure
       fig.canvas.set_window_title('AP ' + class_name)

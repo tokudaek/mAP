@@ -34,7 +34,7 @@ First, your neural net **predicted objects** are sorted by decreasing confidence
 
 Using this criterium, we calculate the precision/recall curve. E.g:
 
-<img src="https://user-images.githubusercontent.com/15831541/43008995-64dd53ce-8c34-11e8-8a2c-4567b1311910.png" width="45%" height="45%" />
+<img src="https://user-images.githubusercontent.com/15831541/37722176-3fd0f3e4-2d23-11e8-961c-29001ea2a6b8.png" width="65%" height="65%" />
 
 Then we compute a version of the measured precision/recall curve with **precision monotonically decreasing** (shown in light red), by setting the precision for recall `r` to the maximum precision obtained for any recall `r' > r`.
 
@@ -97,14 +97,13 @@ In the [extra](https://github.com/Cartucho/mAP/tree/master/extra) folder you can
 - Use **matching names** (e.g. image: "image_1.jpg", ground-truth: "image_1.txt"; "image_2.jpg", "image_2.txt"...).
 - In these files, each line should be in the following format:
     ```
-    <class_name> <left> <top> <right> <bottom> [<difficult>]
+    <class_name> <left> <top> <right> <bottom>
     ```
-- The `difficult` parameter is optional, use it if you want to ignore a specific prediction.
 - E.g. "image_1.txt":
     ```
     tvmonitor 2 10 173 238
     book 439 157 556 241
-    book 437 246 518 351 difficult
+    book 437 246 518 351
     pottedplant 272 190 316 259
     ```
 #### Create the predicted objects files
