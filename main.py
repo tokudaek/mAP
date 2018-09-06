@@ -278,7 +278,7 @@ results_files_path = args.outdir
   # reset the results directory
   #shutil.rmtree(results_files_path)
 
-#os.makedirs(results_files_path)
+if not os.path.exists(results_files_path): os.makedirs(results_files_path)
 if draw_plot:
   os.makedirs(results_files_path + "/classes")
 if show_animation:
