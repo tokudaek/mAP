@@ -18,6 +18,7 @@ parser.add_argument('-i', '--ignore', nargs='+', type=str, help="ignore a list o
 parser.add_argument('--set-class-iou', nargs='+', type=str, help="set IoU for a specific class.")
 parser.add_argument('--preddir', required=True, help="Predictions dir")
 parser.add_argument('--gnddir', required=True, help="Ground-truth dir")
+parser.add_argument('--outdir', default='/tmp', help="outputdir")
 args = parser.parse_args()
 
 # if there are no classes to ignore then replace None by empty list
@@ -272,12 +273,12 @@ def draw_plot_func(dictionary, n_classes, window_title, plot_title, x_label, out
 tmp_files_path = "tmp_files"
 if not os.path.exists(tmp_files_path): # if it doesn't exist already
   os.makedirs(tmp_files_path)
-results_files_path = "results"
-if os.path.exists(results_files_path): # if it exist already
+results_files_path = args.outdir
+#if os.path.exists(results_files_path): # if it exist already
   # reset the results directory
-  shutil.rmtree(results_files_path)
+  #shutil.rmtree(results_files_path)
 
-os.makedirs(results_files_path)
+#os.makedirs(results_files_path)
 if draw_plot:
   os.makedirs(results_files_path + "/classes")
 if show_animation:
