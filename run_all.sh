@@ -1,18 +1,15 @@
 #!/bin/bash
 
-R=$HOME/results/derain/derain_benchmark/
-ROOT=$R/detections/
-METHS=( maskrcnn ssd )
-DETS=( aodnet_paired aodnet_unpaired dcgan_paired deraindrop_paired deraindrop_unpaired didmdn_paired didmdn_unpaired idcgan_unpaired rainy_paired rainy_unpaired rescan_paired rescan_unpaired sunny_paired sunny_unpaired ugsm_paired ugsm_unpaired )
+R=/home/ibaraujo/cvpr19-dataset/detection/
+#DIRS=( fasterrcnn_ddn fasterrcnn_deraindrop fasterrcnn_did-mdn fasterrcnn_idcgan fasterrcnn_jorder fasterrcnn_raw ssd_ddn ssd_deraindrop ssd_did-mdn ssd_idcgan ssd_jorder ssd_raw )
+#DIRS=( ssd_raw ssd_jorder ssd_ddn ssd_idcgan ssd_did-mdn ssd_deraindrop )
+DIRS=( fasterrcnn_raw fasterrcnn_jorder fasterrcnn_ddn fasterrcnn_idcgan fasterrcnn_did-mdn fasterrcnn_deraindrop )
+ANN=/home/keiji/temp/rainy_set_annotations_motorbike/
+#ANN=/home/keiji/temp/rainy_set_annotations/
 
-METH="${METHS[0]}"
-
-for DET in "${DETS[@]}"; do
-	if [[ $DET = *"unpaired"* ]]; then P='unpaired'; else P='paired'; fi
-	if [[ $DET = *"sunny"* ]]; then W='sunny'; else W='rainy'; fi 
-
-	python main.py  --preddir=$ROOT/$METH/$DET/ \
-		--gnddir=$R/real/${W}_${P}_annot/ \
-		--outfile=$ROOT/${METH}_${DET}.txt
+for D in "${DIRS[@]}"; do
+	echo python main.py  --preddir=${R}/$D \
+		--gnddir=$ANN \
+		--outfile=$R/${D}.txt
 done
 
